@@ -4,6 +4,9 @@ import { nanoid } from 'nanoid';
 import { NodeCategory, type NodeCategory as NodeCategoryType } from '../../core/models/types';
 import { addNode } from '../../core/store/workflowSlice';
 import { NodeRegistry } from '../../core/models/NodeRegistry';
+import { Stack, Box, Typography, TextField, InputAdornment, Tooltip } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import './NodePalette.css';
 
 // Interface for node template items in the palette
 interface NodeTemplateItem {
@@ -246,60 +249,82 @@ const NodePalette: React.FC = () => {
     dispatch(addNode(newNode));
   };
 
+  // Get the category CSS class name
+  const getCategoryClass = (category: string) => {
+    // Convert category name to kebab case and lowercase
+    return category.toLowerCase().replace(/_/g, '-');
+  };
+
   return (
-    <div className="node-palette" style={{ padding: '16px', width: '250px', overflowY: 'auto' }}>
-      <h3>Workflow Nodes</h3>
+    <div className="node-palette">
+      <Typography variant="h6" component="h3">Workflow Nodes</Typography>
+      
+      <Box className="search-bar">
+        <TextField
+          size="small"
+          placeholder="Search nodes..."
+          fullWidth
+          variant="outlined"
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          }}
+          onChange={() => {
+            // We could implement search functionality here
+            // For now it's just a visual element
+          }}
+        />
+      </Box>
       
       {Object.entries(templatesByCategory).map(([category, templates]) => (
-        <div key={category} className="node-category">
-          <h4>{category}</h4>
-          <div className="node-list">
+        <Box key={category} className="node-category">
+          <Typography variant="subtitle2" component="h4">{category}</Typography>
+          <Stack spacing={1} className="node-list">
             {templates.map(template => (
-              <div 
-                key={`${category}-${template.type}`} 
-                className="node-item"
-                onClick={() => handleAddNode(template)}
-                draggable
-                onDragStart={(event) => {
-                  // Store node template data in the drag event
-                  event.dataTransfer.setData('application/json', JSON.stringify(template));
-                  event.dataTransfer.setData('application/reactflow', JSON.stringify(template));
-                  event.dataTransfer.effectAllowed = 'move';
-
-                  // Add a visual element to the drag operation
-                  const dragPreview = document.createElement('div');
-                  dragPreview.className = 'node-drag-preview';
-                  dragPreview.textContent = template.name;
-                  dragPreview.style.backgroundColor = '#f5f5f5';
-                  dragPreview.style.padding = '8px';
-                  dragPreview.style.border = '1px solid #ddd';
-                  dragPreview.style.borderRadius = '4px';
-                  dragPreview.style.position = 'absolute';
-                  dragPreview.style.top = '-1000px';
-                  document.body.appendChild(dragPreview);
-                  
-                  // Clean up the preview element after the drag operation
-                  setTimeout(() => {
-                    document.body.removeChild(dragPreview);
-                  }, 0);
-                }}
-                style={{
-                  padding: '8px 12px',
-                  margin: '6px 0',
-                  backgroundColor: '#f5f5f5',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  cursor: 'grab',
-                }}
+              <Tooltip 
+                key={`${category}-${template.type}`}
+                title={template.description}
+                placement="right"
+                arrow
               >
-                <div className="node-title">{template.name}</div>
-                <div className="node-description" style={{ fontSize: '0.8rem', color: '#666' }}>
-                  {template.description}
-                </div>
-              </div>
+                <Box 
+                  className={`node-item ${getCategoryClass(category)}`}
+                  onClick={() => handleAddNode(template)}
+                  draggable
+                  onDragStart={(event) => {
+                    // Store node template data in the drag event
+                    event.dataTransfer.setData('application/json', JSON.stringify(template));
+                    event.dataTransfer.setData('application/reactflow', JSON.stringify(template));
+                    event.dataTransfer.effectAllowed = 'move';
+
+                    // Add a visual element to the drag operation
+                    const dragPreview = document.createElement('div');
+                    dragPreview.className = 'node-drag-preview';
+                    dragPreview.textContent = template.name;
+                    document.body.appendChild(dragPreview);
+                    
+                    // Clean up the preview element after the drag operation
+                    setTimeout(() => {
+                      document.body.removeChild(dragPreview);
+                    }, 0);
+                  }}
+                >
+                  <Typography variant="body2" className="node-title">
+                    {template.name}
+                  </Typography>
+                  <Typography variant="caption" className="node-description">
+                    {template.description.length > 60 
+                      ? `${template.description.substring(0, 60)}...` 
+                      : template.description}
+                  </Typography>
+                </Box>
+              </Tooltip>
             ))}
-          </div>
-        </div>
+          </Stack>
+        </Box>
       ))}
     </div>
   );

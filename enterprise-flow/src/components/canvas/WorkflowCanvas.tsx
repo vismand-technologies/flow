@@ -7,7 +7,6 @@ import ReactFlow, {
   ReactFlowProvider, 
   useNodesState,
   useEdgesState,
-  addEdge,
 } from 'reactflow';
 import type {
   Connection,
@@ -16,15 +15,18 @@ import type {
   ReactFlowInstance
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import './WorkflowCanvas.css';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from '../../core/store';
 import { 
-  addConnection, 
+  addNode, 
+  removeNode,
+  addConnection,
+  removeConnection,
   updateNodePosition,
   selectNode,
+  selectConnection,
   clearAllSelections,
-  addNode,
-  removeNode
 } from '../../core/store/workflowSlice';
 import { nanoid } from 'nanoid';
 
@@ -37,16 +39,28 @@ const WorkflowCanvas: React.FC = () => {
   const dispatch = useDispatch();
   const workflow = useSelector((state: RootState) => state.workflow);
   
-  // Memoize nodeTypes to prevent recreation on each render
+  // Memoize nodeTypes to prevent recreation 
   const nodeTypes = useMemo(() => ({
     default: BaseNode,
-    // Additional custom node types can be added here as we develop them
-  }), []);
+    if_else: BaseNode,
+    input: BaseNode,
+    output: BaseNode,
+    process: BaseNode,
+    ai: BaseNode,
+  }), []); 
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   
   // Store a counter for unique positioning (without depending on nodes before declaration)
   const nodeCountRef = useRef(0);
+  
+  // State for context menu
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    nodeId?: string;
+    edgeId?: string;
+  } | null>(null);
 
   // Convert our nodes and connections to ReactFlow format
   const initialNodes: ReactFlowNode[] = workflow.nodes.map(node => ({
@@ -66,7 +80,7 @@ const WorkflowCanvas: React.FC = () => {
 
   // State for ReactFlow nodes and edges
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [edges, _, onEdgesChange] = useEdgesState(initialEdges); // Using _ to indicate unused variable
   
   // Sync Redux state changes to ReactFlow
   useEffect(() => {
@@ -92,39 +106,30 @@ const WorkflowCanvas: React.FC = () => {
 
   // Handle new connections
   const onConnect = useCallback(
-    (connection: Connection) => {
-      if (
-        connection.source &&
-        connection.target &&
-        connection.sourceHandle &&
-        connection.targetHandle
-      ) {
-        const newConnection = {
-          id: nanoid(),
-          sourceNodeId: connection.source,
-          sourceFieldId: connection.sourceHandle,
-          targetNodeId: connection.target,
-          targetFieldId: connection.targetHandle,
-        };
-
-        dispatch(addConnection(newConnection));
-        setEdges((eds) =>
-          addEdge(
-            {
-              ...connection,
-              id: newConnection.id,
-            },
-            eds
-          )
-        );
-      }
+    (params: Connection) => {
+      const newConnection = {
+        id: nanoid(),
+        sourceNodeId: params.source!,
+        sourceFieldId: params.sourceHandle!,
+        targetNodeId: params.target!,
+        targetFieldId: params.targetHandle!,
+      };
+      
+      // Add the connection via Redux
+      dispatch(addConnection(newConnection));
+      
+      // Auto select the new connection
+      setTimeout(() => {
+        dispatch(selectConnection(newConnection.id));
+      }, 50);
     },
-    [dispatch, setEdges]
+    [dispatch]
   );
 
-  // Handle node selection
+  // Handle node selection when clicked directly
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: ReactFlowNode) => {
+      console.log('Node clicked, selecting node ID:', node.id);
       dispatch(selectNode(node.id));
     },
     [dispatch]
@@ -132,6 +137,7 @@ const WorkflowCanvas: React.FC = () => {
 
   // Handle canvas click (deselect all)
   const onPaneClick = useCallback(() => {
+    setContextMenu(null);
     dispatch(clearAllSelections());
   }, [dispatch]);
 
@@ -155,6 +161,10 @@ const WorkflowCanvas: React.FC = () => {
           const selectedNodeIds = nodes
             .filter(node => node.selected)
             .map(node => node.id);
+          
+          const selectedEdgeIds = edges
+            .filter(edge => edge.selected)
+            .map(edge => edge.id);
             
           if (selectedNodeIds.length > 0) {
             console.log('Keyboard delete for nodes:', selectedNodeIds);
@@ -162,10 +172,22 @@ const WorkflowCanvas: React.FC = () => {
               dispatch(removeNode(id));
             });
           }
+          
+          if (selectedEdgeIds.length > 0) {
+            console.log('Keyboard delete for edges:', selectedEdgeIds);
+            selectedEdgeIds.forEach(id => {
+              dispatch(removeConnection(id));
+            });
+          }
         }
       }
+      
+      // Close context menu on Escape
+      if (event.key === 'Escape') {
+        setContextMenu(null);
+      }
     },
-    [nodes, dispatch]
+    [nodes, edges, dispatch]
   );
   
   // Register keyboard handler
@@ -326,57 +348,138 @@ const WorkflowCanvas: React.FC = () => {
     [dispatch, reactFlowInstance]
   );
 
+  // Handle right-click on node or edge
+  const onNodeContextMenu = useCallback(
+    (event: React.MouseEvent, node: ReactFlowNode) => {
+      event.preventDefault();
+      setContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        nodeId: node.id,
+      });
+    },
+    []
+  );
+  
+  const onEdgeContextMenu = useCallback(
+    (event: React.MouseEvent, edge: Edge) => {
+      event.preventDefault();
+      setContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        edgeId: edge.id,
+      });
+    },
+    []
+  );
+
   return (
-    <div 
-      style={{ 
-        width: '100%', 
-        height: '100%', 
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        bottom: 0,
-        right: 0
-      }} 
-      className="dndflow"
-      ref={reactFlowWrapper}
-    >
+    <div className="dndflow">
       <ReactFlowProvider>
-        <div className="reactflow-wrapper" style={{ width: '100%', height: '100%' }}>
+        <div className="reactflow-wrapper" ref={reactFlowWrapper}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
+            nodeTypes={nodeTypes}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
-            onNodeDragStop={onNodeDragStop}
             onConnect={onConnect}
-            onNodeClick={onNodeClick}
-            onPaneClick={onPaneClick}
             onInit={setReactFlowInstance}
             onDrop={onDrop}
             onDragOver={onDragOver}
+            onNodeDragStop={onNodeDragStop}
             onNodesDelete={onNodesDelete}
-            nodeTypes={nodeTypes}
+            onNodeClick={onNodeClick}
+            onNodeContextMenu={onNodeContextMenu}
+            onEdgeContextMenu={onEdgeContextMenu}
+            onPaneClick={onPaneClick}
             fitView
-            defaultViewport={{ x: 0, y: 0, zoom: 1.0 }}
-            fitViewOptions={{ padding: 0.2 }}
             deleteKeyCode={['Backspace', 'Delete']}
-            minZoom={0.2}
-            maxZoom={4}
-            connectOnClick={false}
-            style={{ width: '100%', height: '100%' }}
-        >
-          <Background />
-          <Controls />
-          <MiniMap />
-          <Panel position="top-right">
-            <div className="workflow-info">
-              <h3>{workflow.name}</h3>
-              <p>{workflow.description}</p>
-            </div>
-          </Panel>
+            multiSelectionKeyCode={['Meta', 'Shift']}
+            selectionKeyCode={'Shift'}
+            elevateNodesOnSelect={true}
+            style={{ 
+              width: '100%', 
+              height: '100%',
+              background: '#1e1e1e',
+            }}
+          >
+            <Controls />
+            <MiniMap 
+              nodeStrokeColor="#555" 
+              nodeColor="#333" 
+              nodeBorderRadius={2}
+              maskColor="rgba(0, 0, 0, 0.5)"
+            />
+            <Background gap={16} size={1} color="#444" />
+            <Panel position="top-right">
+              <div className="workflow-info">
+                <h4>{workflow.name || 'Workflow'}</h4>
+              </div>
+            </Panel>
           </ReactFlow>
+          
+          {/* Context menu */}
+          {contextMenu && (
+            <ContextMenu
+              x={contextMenu.x}
+              y={contextMenu.y}
+              nodeId={contextMenu.nodeId}
+              edgeId={contextMenu.edgeId}
+              onClose={() => setContextMenu(null)}
+            />
+          )}
         </div>
       </ReactFlowProvider>
+    </div>
+  );
+};
+
+// Context menu for nodes and edges
+interface ContextMenuProps {
+  x: number;
+  y: number;
+  onClose: () => void;
+  nodeId?: string;
+  edgeId?: string;
+}
+
+const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, nodeId, edgeId }) => {
+  const dispatch = useDispatch();
+  
+  // Handle menu actions
+  const handleDelete = () => {
+    if (nodeId) {
+      dispatch(removeNode(nodeId));
+    } else if (edgeId) {
+      dispatch(removeConnection(edgeId));
+    }
+    onClose();
+  };
+  
+  const handleProperties = () => {
+    if (nodeId) {
+      // Select the node to open its properties
+      dispatch(clearAllSelections());
+      dispatch(selectNode(nodeId));
+    }
+    onClose();
+  };
+
+  return (
+    <div 
+      className="node-context-menu" 
+      style={{ left: x, top: y }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {nodeId && (
+        <div className="context-menu-item" onClick={handleProperties}>
+          Properties
+        </div>
+      )}
+      <div className="context-menu-item" onClick={handleDelete}>
+        Delete
+      </div>
     </div>
   );
 };

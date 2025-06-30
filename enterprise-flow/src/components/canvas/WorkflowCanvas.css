@@ -1,0 +1,169 @@
+/* WorkflowCanvas.css - Styles for ReactFlow workflow editor */
+
+.dndflow {
+  flex-direction: column;
+  display: flex;
+  height: 100%;
+  width: 100%;
+}
+
+.reactflow-wrapper {
+  flex-grow: 1;
+  height: 100%;
+  width: 100%;
+}
+
+/* Dark theme styling for the canvas */
+.react-flow__container {
+  background-color: #1e1e1e;
+}
+
+.react-flow__node {
+  border-radius: 4px;
+  border: 1px solid #555;
+  padding: 10px;
+  font-size: 12px;
+  color: #eee;
+  text-align: left;
+  width: 180px;
+}
+
+.react-flow__node-default {
+  background-color: #2d2d2d;
+  color: white;
+}
+
+.react-flow__node-input {
+  background-color: #0041d0;
+}
+
+.react-flow__node-output {
+  background-color: #ff0072;
+}
+
+.react-flow__node-if_else {
+  background-color: #2d3748;
+}
+
+.react-flow__node-process {
+  background-color: #1a365d;
+}
+
+.react-flow__node-ai {
+  background-color: #4a5568;
+}
+
+.react-flow__node-selected {
+  box-shadow: 0 0 0 2px #1976d2;
+}
+
+.react-flow__edge-path {
+  stroke: #888;
+  stroke-width: 2;
+}
+
+.react-flow__edge-interaction {
+  stroke: #fff;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #1976d2;
+  stroke-width: 3;
+}
+
+.react-flow__edge-text {
+  font-size: 10px;
+}
+
+.react-flow__attribution {
+  display: none;
+}
+
+/* Handle */
+.react-flow__handle {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #5a5a5a;
+  border: 1px solid #888;
+}
+
+.react-flow__handle-left {
+  left: -5px;
+}
+
+.react-flow__handle-right {
+  right: -5px;
+}
+
+.react-flow__handle:hover {
+  background-color: #1976d2;
+}
+
+/* Node headers and content */
+.node-header {
+  padding: 5px;
+  border-radius: 3px 3px 0 0;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.node-content {
+  padding: 8px;
+}
+
+.node-label {
+  font-size: 12px;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Port styling */
+.port {
+  display: flex;
+  align-items: center;
+  margin: 4px 0;
+}
+
+.port-label {
+  font-size: 10px;
+  margin-left: 8px;
+  margin-right: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.input-port {
+  justify-content: flex-start;
+}
+
+.output-port {
+  justify-content: flex-end;
+}
+
+/* Context menu */
+.node-context-menu {
+  position: fixed;
+  background-color: #2d2d2d;
+  border: 1px solid #555;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  padding: 5px 0;
+  z-index: 1000;
+}
+
+.context-menu-item {
+  padding: 5px 15px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #eee;
+}
+
+.context-menu-item:hover {
+  background-color: #3d3d3d;
+}

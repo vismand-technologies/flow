@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import WorkflowCanvas from './components/canvas/WorkflowCanvas';
 import NodePalette from './components/sidebar/NodePalette';
@@ -129,6 +129,13 @@ const App: React.FC = () => {
     const selectedNodes = state.workflow.selectedNodeIds;
     return selectedNodes && selectedNodes.length > 0 ? selectedNodes[0] : null;
   });
+
+  // Automatically switch to properties tab when a node is selected
+  useEffect(() => {
+    if (selectedNodeId) {
+      setRightPanelTab(0); // Switch to Properties tab (index 0)
+    }
+  }, [selectedNodeId]);
 
   const handleSidebarTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setSidebarTab(newValue);
