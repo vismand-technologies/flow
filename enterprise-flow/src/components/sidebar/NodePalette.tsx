@@ -259,13 +259,37 @@ const NodePalette: React.FC = () => {
                 key={`${category}-${template.type}`} 
                 className="node-item"
                 onClick={() => handleAddNode(template)}
+                draggable
+                onDragStart={(event) => {
+                  // Store node template data in the drag event
+                  event.dataTransfer.setData('application/json', JSON.stringify(template));
+                  event.dataTransfer.setData('application/reactflow', JSON.stringify(template));
+                  event.dataTransfer.effectAllowed = 'move';
+
+                  // Add a visual element to the drag operation
+                  const dragPreview = document.createElement('div');
+                  dragPreview.className = 'node-drag-preview';
+                  dragPreview.textContent = template.name;
+                  dragPreview.style.backgroundColor = '#f5f5f5';
+                  dragPreview.style.padding = '8px';
+                  dragPreview.style.border = '1px solid #ddd';
+                  dragPreview.style.borderRadius = '4px';
+                  dragPreview.style.position = 'absolute';
+                  dragPreview.style.top = '-1000px';
+                  document.body.appendChild(dragPreview);
+                  
+                  // Clean up the preview element after the drag operation
+                  setTimeout(() => {
+                    document.body.removeChild(dragPreview);
+                  }, 0);
+                }}
                 style={{
                   padding: '8px 12px',
                   margin: '6px 0',
                   backgroundColor: '#f5f5f5',
                   border: '1px solid #ddd',
                   borderRadius: '4px',
-                  cursor: 'pointer',
+                  cursor: 'grab',
                 }}
               >
                 <div className="node-title">{template.name}</div>

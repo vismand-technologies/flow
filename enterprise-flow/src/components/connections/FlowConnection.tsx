@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { styled } from '@mui/material/styles';
 
 // Define the point interface for connection coordinates
@@ -31,8 +31,9 @@ const ConnectionPath = styled('path')(({ theme }) => ({
 /**
  * FlowConnection component renders SVG bezier curve paths between nodes
  * Preserves the visual styling from the original Flow framework
+ * Optimized with React.memo for performance
  */
-export const FlowConnection: React.FC<FlowConnectionProps> = ({
+export const FlowConnection = React.memo<FlowConnectionProps>(({
   id,
   sourcePoint,
   targetPoint,
@@ -88,46 +89,109 @@ export const FlowConnection: React.FC<FlowConnectionProps> = ({
       data-connection-id={id}
     />
   );
-};
+});
 
 /**
  * FlowConnectionCanvas wraps connection paths in an SVG container
+ * Uses ResizeObserver for responsive connections
  */
 export interface FlowConnectionCanvasProps {
-  width: number;
-  height: number;
+  width?: number;
+  height?: number;
   children: React.ReactNode;
   className?: string;
+  onResize?: (width: number, height: number) => void;
 }
 
-export const FlowConnectionCanvas: React.FC<FlowConnectionCanvasProps> = ({
-  width,
-  height,
-  children,
+// Styled SVG path with proper theme integration
+const StyledSVG = styled('svg')(({ theme }) => ({
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  pointerEvents: 'none',
+  zIndex: 1,
+  width: '100%', 
+  height: '100%',
+  '& path': {
+    pointerEvents: 'auto',
+    stroke: theme.palette.mode === 'dark' ? '#646464' : '#999999',
+    strokeWidth: 1,
+    transition: 'stroke 0.2s, stroke-width 0.2s',
+  },
+  '& path.flow-connection-selected': {
+    stroke: theme.palette.primary.main,
+    strokeWidth: 2,
+  },
+  '& path.flow-connection-animated': {
+    strokeDasharray: '5,5',
+    animation: 'flowDashOffset 0.5s linear infinite',
+  },
+  '@keyframes flowDashOffset': {
+    '0%': { strokeDashoffset: 0 },
+    '100%': { strokeDashoffset: 10 },
+  },
+}));
+
+/**
+ * FlowConnectionCanvas component with improved responsive behavior
+ * Uses React refs and ResizeObserver for automatic sizing
+ */
+export const FlowConnectionCanvas = React.memo<FlowConnectionCanvasProps>(({ 
+  width: initialWidth,
+  height: initialHeight,
+  children, 
   className = '',
+  onResize
 }) => {
+  const canvasRef = useRef<SVGSVGElement>(null);
+  const [dimensions, setDimensions] = useState({ 
+    width: initialWidth || 800, 
+    height: initialHeight || 600 
+  });
+  
+  // Use ResizeObserver for responsive connections
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (canvasRef.current) {
+        const parent = canvasRef.current.parentElement;
+        if (parent) {
+          const newWidth = parent.clientWidth;
+          const newHeight = parent.clientHeight;
+          setDimensions({ width: newWidth, height: newHeight });
+          
+          if (onResize) {
+            onResize(newWidth, newHeight);
+          }
+        }
+      }
+    };
+    
+    const observer = new ResizeObserver(updateDimensions);
+    
+    if (canvasRef.current?.parentElement) {
+      observer.observe(canvasRef.current.parentElement);
+    }
+    
+    // Initial measurement
+    updateDimensions();
+    
+    return () => observer.disconnect();
+  }, [onResize]);
+
   return (
-    <svg 
+    <StyledSVG 
+      ref={canvasRef}
       className={`flow-connection-canvas ${className}`}
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
+      width={dimensions.width}
+      height={dimensions.height}
+      viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
       preserveAspectRatio="xMidYMid meet"
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        pointerEvents: 'none',
-        zIndex: 1,
-        width: '100%',  // Make SVG responsive
-        height: '100%', // Make SVG responsive
-      }}
     >
       <g className="flow-connections-layer">
         {children}
       </g>
-    </svg>
+    </StyledSVG>
   );
-};
+});
 
 export default FlowConnection;

@@ -68,7 +68,7 @@ const nodeStyles = {
 
 const BaseNode: React.FC<NodeProps> = ({ data, id, selected }) => {
   const dispatch = useDispatch();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true); // Default to expanded for better UX
 
   // Convert input fields to array for rendering
   const inputFields = Object.entries(data.inputs || {}).map(([key, field]: [string, any]) => ({
@@ -142,7 +142,9 @@ const BaseNode: React.FC<NodeProps> = ({ data, id, selected }) => {
       style={{
         ...nodeStyles.node,
         borderColor: selected ? '#3498db' : '#ddd',
-        boxShadow: selected ? '0 0 0 1px #3498db' : nodeStyles.node.boxShadow,
+        boxShadow: selected ? '0 0 0 2px #3498db' : nodeStyles.node.boxShadow,
+        transform: selected ? 'scale(1.02)' : 'scale(1)',
+        transition: 'transform 0.2s, box-shadow 0.2s',
       }}
     >
       {/* Node Header */}
@@ -198,19 +200,34 @@ const BaseNode: React.FC<NodeProps> = ({ data, id, selected }) => {
         </div>
       )}
       
-      {/* Always show at least one handle even when collapsed */}
+      {/* Always show entry handles even when collapsed */}
       {!expanded && (
         <>
-          <Handle
-            type="target"
-            position={Position.Left}
-            style={{ background: '#0041d0' }}
-          />
-          <Handle
-            type="source"
-            position={Position.Right}
-            style={{ background: '#ff0072' }}
-          />
+          {inputFields.length > 0 && inputFields.map((field, index) => (
+            <Handle
+              key={field.id}
+              type="target"
+              position={Position.Left}
+              id={field.id}
+              style={{ 
+                background: '#0041d0',
+                top: `${30 + (index * 15)}px` // Space out handles vertically
+              }}
+            />
+          ))}
+          
+          {outputFields.length > 0 && outputFields.map((field, index) => (
+            <Handle
+              key={field.id}
+              type="source"
+              position={Position.Right}
+              id={field.id}
+              style={{ 
+                background: '#ff0072',
+                top: `${30 + (index * 15)}px` // Space out handles vertically
+              }}
+            />
+          ))}
         </>
       )}
     </div>

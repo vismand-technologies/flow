@@ -90,6 +90,27 @@ export const flowThemeOptions: ThemeOptions = {
     },
   },
   components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: '4px',  // Match node border radius for consistency
+          textTransform: 'none',
+          fontWeight: 500,
+        },
+        containedPrimary: {
+          backgroundColor: flowColors.accent,
+          '&:hover': {
+            backgroundColor: '#ff8a1f', // Slightly lighter orange on hover
+          },
+        },
+        outlined: {
+          borderWidth: '1px',
+          '&:hover': {
+            borderWidth: '1px',
+          },
+        },
+      },
+    },
     MuiCssBaseline: {
       styleOverrides: {
         body: {
@@ -254,19 +275,7 @@ export const flowThemeOptions: ThemeOptions = {
         },
       },
     },
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          borderRadius: '4px',
-          textTransform: 'none',
-        },
-        containedPrimary: {
-          '&:hover': {
-            backgroundColor: `${flowColors.accent}e0`, // Slightly transparent on hover
-          },
-        },
-      },
-    },
+    // MuiButton styles are now defined at the top of the components section
     MuiTab: {
       styleOverrides: {
         root: {
