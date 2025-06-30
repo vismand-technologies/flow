@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '../../core/store/index';
-import { updateNode } from '../../core/store/workflowSlice';
+import { updateNode, removeNode } from '../../core/store/workflowSlice';
 import { NodeRegistry } from '../../core/models/NodeRegistry';
 import { FieldType } from '../../core/models/types';
 import {
@@ -339,6 +339,14 @@ const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({ nodeId, onClose }) =>
             variant="outlined"
             color="error"
             startIcon={<DeleteIcon />}
+            onClick={() => {
+              if (selectedNode) {
+                console.log('Deleting node from panel:', selectedNode.id);
+                dispatch(removeNode(selectedNode.id));
+                // Close the panel after deletion
+                if (onClose) onClose();
+              }
+            }}
           >
             Remove
           </Button>

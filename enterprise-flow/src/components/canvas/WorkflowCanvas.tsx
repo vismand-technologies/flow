@@ -137,10 +137,44 @@ const WorkflowCanvas: React.FC = () => {
 
   // Handle node deletion
   const onNodesDelete = useCallback((nodesToDelete: ReactFlowNode[]) => {
+    console.log('Deleting nodes:', nodesToDelete);
     nodesToDelete.forEach(node => {
+      console.log(`Dispatching removeNode for node ID: ${node.id}`);
       dispatch(removeNode(node.id));
     });
   }, [dispatch]);
+
+  // Add keyboard delete handler to make deletion more robust
+  const onKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        // Only delete if we have nodes selected and no input is focused
+        if (document.activeElement?.tagName !== 'INPUT' && 
+            document.activeElement?.tagName !== 'TEXTAREA') {
+          
+          const selectedNodeIds = nodes
+            .filter(node => node.selected)
+            .map(node => node.id);
+            
+          if (selectedNodeIds.length > 0) {
+            console.log('Keyboard delete for nodes:', selectedNodeIds);
+            selectedNodeIds.forEach(id => {
+              dispatch(removeNode(id));
+            });
+          }
+        }
+      }
+    },
+    [nodes, dispatch]
+  );
+  
+  // Register keyboard handler
+  useEffect(() => {
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [onKeyDown]);
 
   // Handle dropping nodes from palette onto canvas
   const onDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
