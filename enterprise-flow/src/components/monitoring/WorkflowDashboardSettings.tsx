@@ -3,7 +3,6 @@ import {
   Box,
   Paper,
   Typography,
-  Grid,
   FormControl,
   FormControlLabel,
   FormGroup,
@@ -181,9 +180,9 @@ const WorkflowDashboardSettings: React.FC<WorkflowDashboardSettingsProps> = ({
         
         <Divider sx={{ mb: 4 }} />
         
-        <Grid container spacing={4}>
+        <Stack direction="row" spacing={4} sx={{ flexWrap: 'wrap' }}>
           {/* General Settings */}
-          <Grid size={{ xs: 12, md: 6 }}>
+          <Box sx={{ width: { xs: '100%', md: '50%' } }}>
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="h6" gutterBottom>
@@ -281,10 +280,10 @@ const WorkflowDashboardSettings: React.FC<WorkflowDashboardSettingsProps> = ({
                 </Box>
               </CardContent>
             </Card>
-          </Grid>
+          </Box>
           
           {/* Display Settings */}
-          <Grid size={{ xs: 12, md: 6 }}>
+          <Box sx={{ width: { xs: '100%', md: '50%' } }}>
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="h6" gutterBottom>
@@ -361,10 +360,10 @@ const WorkflowDashboardSettings: React.FC<WorkflowDashboardSettingsProps> = ({
                 </Stack>
               </CardContent>
             </Card>
-          </Grid>
+          </Box>
           
           {/* Custom Settings (for future extension) */}
-          <Grid size={{ xs: 12 }}>
+          <Box sx={{ width: '100%' }}>
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="h6" gutterBottom>
@@ -391,8 +390,8 @@ const WorkflowDashboardSettings: React.FC<WorkflowDashboardSettingsProps> = ({
                 </Box>
               </CardContent>
             </Card>
-          </Grid>
-        </Grid>
+          </Box>
+        </Stack>
       </Paper>
       
       {/* Success notification */}

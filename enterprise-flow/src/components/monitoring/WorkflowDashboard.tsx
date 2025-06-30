@@ -6,7 +6,7 @@ import {
   Typography,
   Tab,
   Tabs,
-  Grid,
+  Stack,
   Card,
   CardContent,
   CircularProgress,
@@ -135,8 +135,8 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflowId }) => 
     if (!summaryData) return null;
     
     return (
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 3, sm: 3, md: 3 }}>
+      <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap' }}>
+        <Box sx={{ width: { xs: '25%', sm: '25%', md: '25%' } }}>
           <Card>
             <CardContent>
               <Typography variant="h6" color="primary">
@@ -147,8 +147,8 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflowId }) => 
               </Typography>
             </CardContent>
           </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        </Box>
+        <Box sx={{ width: { xs: '100%', sm: '50%', md: '25%' } }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
@@ -159,8 +159,8 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflowId }) => 
               </Typography>
             </CardContent>
           </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        </Box>
+        <Box sx={{ width: { xs: '100%', sm: '50%', md: '25%' } }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
@@ -171,8 +171,8 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflowId }) => 
               </Typography>
             </CardContent>
           </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        </Box>
+        <Box sx={{ width: { xs: '100%', sm: '50%', md: '25%' } }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
@@ -183,8 +183,8 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflowId }) => 
               </Typography>
             </CardContent>
           </Card>
-        </Grid>
-      </Grid>
+        </Box>
+      </Stack>
     );
   };
 

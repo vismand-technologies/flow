@@ -8,6 +8,7 @@ import WorkflowVersioning from './components/versioning/WorkflowVersioning';
 import { useSelector } from 'react-redux';
 import type { RootState } from './core/store/index';
 import { Box, Tabs, Tab, Typography, Button, IconButton } from '@mui/material';
+import FlowThemeProvider from './theme/FlowThemeProvider';
 
 // Material UI icon imports - Install @mui/icons-material if needed
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -53,13 +54,12 @@ const Toolbar: React.FC = () => {
     <Box
       sx={{
         height: '60px',
-        borderBottom: '1px solid #e0e0e0',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
         display: 'flex',
         alignItems: 'center',
         padding: '0 16px',
-        backgroundColor: '#f8f9fa',
         justifyContent: 'space-between',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -69,7 +69,7 @@ const Toolbar: React.FC = () => {
             fontWeight: 'bold', 
             fontSize: '20px', 
             marginRight: '24px',
-            color: '#3f51b5',
+            color: theme => theme.palette.primary.main, // Use orange accent from theme
             display: 'flex',
             alignItems: 'center'
           }}
@@ -139,14 +139,14 @@ const App: React.FC = () => {
   };
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        width: '100%',
-        height: '100vh',
-        overflow: 'hidden',
-        bgcolor: '#f5f5f7'
+    <FlowThemeProvider>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          width: '100%',
+          height: '100vh',
+          overflow: 'hidden'
       }}
     >
       <Toolbar />
@@ -201,14 +201,18 @@ const App: React.FC = () => {
             height: '100%',
             position: 'relative',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            overflow: 'hidden'
           }}
         >
           <Box
             sx={{
               flex: 1,
               position: 'relative',
-              bgcolor: '#fafafa'
+              bgcolor: '#fafafa',
+              width: '100%',
+              height: '100%',
+              overflow: 'hidden'
             }}
           >
             <WorkflowCanvas />
@@ -258,6 +262,7 @@ const App: React.FC = () => {
         </Box>
       </Box>
     </Box>
+    </FlowThemeProvider>
   );
 }
 

@@ -114,7 +114,18 @@ const WorkflowCanvas: React.FC = () => {
   }, [dispatch]);
 
   return (
-    <div style={{ width: '100%', height: '100vh' }} ref={reactFlowWrapper}>
+    <div 
+      style={{ 
+        width: '100%', 
+        height: '100%', 
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        bottom: 0,
+        right: 0
+      }} 
+      ref={reactFlowWrapper}
+    >
       <ReactFlowProvider>
         <ReactFlow
           nodes={nodes}
@@ -127,6 +138,7 @@ const WorkflowCanvas: React.FC = () => {
           onPaneClick={onPaneClick}
           nodeTypes={nodeTypes}
           fitView
+          style={{ width: '100%', height: '100%' }}
         >
           <Background />
           <Controls />
