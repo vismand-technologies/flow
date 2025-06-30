@@ -1,6 +1,7 @@
 import { NodeRegistry } from '../models/NodeRegistry';
 import type { Node, Field } from '../models/types';
 import { NodeCategory, FieldType, FieldDirection } from '../models/types';
+import { getErrorMessage } from '../utils/errorHandling';
 
 import { nanoid } from 'nanoid';
 
@@ -180,7 +181,7 @@ export class StateMachineNode implements Node {
         isInFinalState: false,
         activeTransitions: [],
         transitionCount: this.outputs.transitionCount || 0,
-        error: error.message || 'State machine execution failed'
+        error: getErrorMessage(error, 'State machine execution failed')
       };
     }
   }
@@ -236,7 +237,7 @@ export class StateMachineNode implements Node {
         const evalFunc = new Function('context', 'event', `return ${condition};`);
         return !!evalFunc(context, event);
       } catch (error) {
-        throw new Error(`Error evaluating condition: ${error.message}`);
+        throw new Error(`Error evaluating condition: ${getErrorMessage(error)}`);
       }
     }
     
@@ -284,7 +285,7 @@ export class StateMachineNode implements Node {
             updatedContext = { ...updatedContext, ...actionResult };
           }
         } catch (error) {
-          throw new Error(`Error executing action: ${error.message}`);
+          throw new Error(`Error executing action: ${getErrorMessage(error)}`);
         }
       }
       

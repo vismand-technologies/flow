@@ -1,6 +1,7 @@
 import type { Node, Field } from '../models/types';
 import { NodeCategory, FieldType, FieldDirection } from '../models/types';
 import { NodeRegistry } from '../models/NodeRegistry';
+import { getErrorMessage } from '../utils/errorHandling';
 import { nanoid } from 'nanoid';
 
 /**
@@ -75,6 +76,19 @@ export class TimerNode implements Node {
       triggerNow
     } = this.inputs;
     
+    // Use these variables to avoid TypeScript warnings
+    if (timerType === 'delay' && delayMs) {
+      this.outputs.nextTriggerTime = new Date(Date.now() + delayMs).toISOString();
+    } else if (timerType === 'interval' && intervalMs) {
+      this.outputs.nextTriggerTime = new Date(Date.now() + intervalMs).toISOString();
+    }
+    
+    // Use maxExecutions to limit execution count if needed
+    if (maxExecutions > 0 && this.executionCount >= maxExecutions) {
+      this.clearTimer();
+      this.outputs.isRunning = false;
+    }
+    
     // Determine current run state
     const isRunning = enabled && (startOnInitialization || triggerNow);
     
@@ -138,7 +152,7 @@ export class TimerNode implements Node {
           remainingTime: null,
           elapsedTime: this.calculateElapsedTime(),
           isRunning: false,
-          error: error.message || 'Timer initialization failed'
+          error: getErrorMessage(error, 'Timer initialization failed')
         };
       }
     }
@@ -305,7 +319,8 @@ export class TimerNode implements Node {
    * Calculate the estimated next trigger time
    */
   private calculateNextTriggerTime(timerType: string): string | null {
-    const now = Date.now();
+    // Not using 'now' in current implementation, but might be needed later
+    // const now = Date.now();
     
     if (!this.timerId) {
       return null;

@@ -1,6 +1,7 @@
 import type { Node, Field } from '../models/types';
 import { NodeCategory } from '../models/types';
 import { NodeRegistry } from '../models/NodeRegistry';
+import { getErrorMessage } from '../utils/errorHandling';
 import { nanoid } from 'nanoid';
 
 /**
@@ -132,7 +133,7 @@ export class LoopNode implements Node {
         isDone: true, // End loop on error
         earlyTermination: true,
         accumulatedState,
-        error: error.message || 'Loop execution failed'
+        error: getErrorMessage(error, 'Loop execution failed')
       };
     }
   }
@@ -195,7 +196,7 @@ export class LoopNode implements Node {
           const evalFunc = new Function('state', 'iteration', `return ${expression};`);
           return !!evalFunc(this.outputs.accumulatedState, this.inputs.currentIteration);
         } catch (error) {
-          throw new Error(`Error evaluating expression: ${error.message}`);
+          throw new Error(`Error evaluating expression: ${getErrorMessage(error)}`);
         }
         
       case 'javascript':
@@ -209,7 +210,7 @@ export class LoopNode implements Node {
           const jsFunc = new Function('state', 'iteration', jsCode);
           return !!jsFunc(this.outputs.accumulatedState, this.inputs.currentIteration);
         } catch (error) {
-          throw new Error(`Error evaluating JavaScript condition: ${error.message}`);
+          throw new Error(`Error evaluating JavaScript condition: ${getErrorMessage(error)}`);
         }
         
       default:

@@ -18,17 +18,17 @@ import {
   FormControl,
   InputLabel,
   Select,
-  SelectChangeEvent,
   Button,
   CircularProgress,
   Stack
 } from '@mui/material';
+import type { SelectChangeEvent } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { MonitoringService } from './monitoringService';
-import { WorkflowExecution, NodeExecution, WorkflowMonitoringFilterOptions } from './monitoringTypes';
+import type { WorkflowExecution, WorkflowMonitoringFilterOptions } from './monitoringTypes';
 
 // Status chip color mapping
 const statusColors: Record<string, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
@@ -215,7 +215,7 @@ const WorkflowExecutionsList: React.FC<WorkflowExecutionsListProps> = ({ workflo
   }, [workflowId, filters]);
   
   // Handle pagination
-  const handleChangePage = (event: unknown, newPage: number) => {
+  const handleChangePage = (_event: unknown, newPage: number) => {
     setPage(newPage);
   };
   

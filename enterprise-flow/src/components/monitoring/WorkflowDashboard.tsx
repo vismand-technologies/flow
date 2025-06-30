@@ -82,7 +82,7 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflowId }) => 
     originalInterval: number | undefined;
   }>({ summaryData: null, originalInterval: undefined });
   const [refreshInterval, setRefreshInterval] = useState<number | undefined>(30000);
-  const workflowName = useSelector((state: RootState) => state.workflow?.currentWorkflow?.name || 'Current Workflow');
+  const workflowName = useSelector((state: RootState) => state.workflow?.name || 'Current Workflow');
 
   // Update the tab value when it changes
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -136,7 +136,7 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflowId }) => 
     
     return (
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={3} sm={3} md={3}>
+        <Grid size={{ xs: 3, sm: 3, md: 3 }}>
           <Card>
             <CardContent>
               <Typography variant="h6" color="primary">
@@ -148,7 +148,7 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflowId }) => 
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
@@ -160,7 +160,7 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflowId }) => 
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
@@ -172,7 +172,7 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflowId }) => 
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>

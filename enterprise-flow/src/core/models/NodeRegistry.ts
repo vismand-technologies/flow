@@ -129,4 +129,31 @@ export class NodeRegistry {
       this.nodesByCategory.set(category, new Set());
     });
   }
+  
+  /**
+   * Get the implementation for a node type
+   * @param type The node type to get the implementation for
+   * @returns The node implementation or undefined if not found
+   */
+  public getNodeImplementation(type: string): any {
+    const definition = this.getNodeDefinition(type);
+    if (!definition) {
+      return undefined;
+    }
+    
+    // Return the node class if available
+    if (definition.nodeClass) {
+      return definition.nodeClass;
+    }
+    
+    // Return the compute function if available
+    if (definition.compute) {
+      return { compute: definition.compute };
+    }
+    
+    // Return a default implementation that does nothing
+    return {
+      compute: () => ({})
+    };
+  }
 }

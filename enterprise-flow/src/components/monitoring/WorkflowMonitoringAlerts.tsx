@@ -6,35 +6,32 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemIcon,
   ListItemSecondaryAction,
-  IconButton,
-  Button,
-  Chip,
-  Divider,
   Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
   DialogTitle,
-  TextField,
-  CircularProgress,
+  DialogContent,
+  DialogActions,
+  Button,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  SelectChangeEvent,
-  Stack
+  Stack,
+  IconButton,
+  CircularProgress,
+  Divider,
+  Chip
 } from '@mui/material';
+import type { SelectChangeEvent } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
 import WarningIcon from '@mui/icons-material/Warning';
 import ErrorIcon from '@mui/icons-material/Error';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+// Alert severity icons
 import FilterListIcon from '@mui/icons-material/FilterList';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { MonitoringService } from './monitoringService';
-import { WorkflowAlert } from './monitoringTypes';
+import type { WorkflowAlert } from './monitoringTypes';
 
 // Map severity to icon and color
 const severityMap = {
@@ -65,7 +62,8 @@ interface AlertItemProps {
  * Individual alert list item component
  */
 const AlertItem: React.FC<AlertItemProps> = ({ alert, onAcknowledge }) => {
-  const { icon, color } = severityMap[alert.severity];
+  // Get color based on severity
+  const { color } = severityMap[alert.severity];
   const formattedTime = new Date(alert.timestamp).toLocaleString();
   
   return (
@@ -78,22 +76,19 @@ const AlertItem: React.FC<AlertItemProps> = ({ alert, onAcknowledge }) => {
         borderColor: `${color}.main`
       }}
     >
-      <ListItemIcon sx={{ color: `${color}.main` }}>
-        {icon}
-      </ListItemIcon>
       <ListItemText
         primary={
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Typography variant="subtitle2" component="span">
               {alert.message}
             </Typography>
-            <Chip 
-              label={alert.severity} 
-              size="small" 
-              color={color as any} 
-              variant="outlined" 
+            <Typography 
+              variant="body2" 
+              component="span" 
               sx={{ ml: 1 }}
-            />
+            >
+              {alert.severity}
+            </Typography>
           </Box>
         }
         secondary={
@@ -132,13 +127,13 @@ const AlertItem: React.FC<AlertItemProps> = ({ alert, onAcknowledge }) => {
       />
       <ListItemSecondaryAction>
         {alert.acknowledged ? (
-          <Chip 
-            icon={<CheckCircleIcon />} 
-            label="Acknowledged" 
-            size="small" 
-            color="default" 
-            variant="outlined" 
-          />
+          <Typography 
+            variant="body2" 
+            component="span" 
+            sx={{ ml: 1 }}
+          >
+            Acknowledged
+          </Typography>
         ) : (
           <Button 
             variant="outlined" 
@@ -228,11 +223,6 @@ const WorkflowMonitoringAlerts: React.FC<WorkflowMonitoringAlertsProps> = ({ wor
     } catch (error) {
       console.error('Error acknowledging alert:', error);
     }
-  };
-  
-  // Handle alert detail view
-  const handleViewDetails = (alert: WorkflowAlert) => {
-    setSelectedAlert(alert);
   };
   
   // Handle filter changes

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import type { RootState } from '../../core/store';
 // Removing WorkflowSerializer as it's not used
 import {
@@ -48,8 +48,8 @@ interface WorkflowVersion {
  * Allows users to manage, compare, and restore workflow versions
  */
 const WorkflowVersioning: React.FC = () => {
-  // Keep dispatch for future use
-  const dispatch = useDispatch();
+  // Keep dispatch for future use - uncomment when needed
+  // const dispatch = useDispatch();
   // Mock currentWorkflow since it might not exist in store yet
   const currentWorkflow = useSelector((state: RootState) => {
     // Access a workflow property that we know exists or use a mock default

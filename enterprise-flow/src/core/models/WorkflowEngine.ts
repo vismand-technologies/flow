@@ -1,5 +1,5 @@
 import { NodeModel } from './NodeModel';
-import { Connection, Workflow } from './types';
+import type { Connection, Workflow } from './types';
 
 /**
  * WorkflowEngine class
@@ -276,6 +276,8 @@ export class WorkflowEngine {
         ...this.metadata,
         createdAt: this.metadata.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        author: this.metadata.author || 'System',
+        version: this.metadata.version || '1.0.0',
       }
     };
   }

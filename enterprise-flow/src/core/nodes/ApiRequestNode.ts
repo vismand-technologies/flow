@@ -1,4 +1,6 @@
-import { Node, NodeRegistry } from '../models/NodeRegistry';
+import type { Node } from '../models/types';
+import { NodeRegistry } from '../models/NodeRegistry';
+import { getErrorMessage } from '../utils/errorHandling';
 import { nanoid } from 'nanoid';
 
 /**
@@ -10,9 +12,20 @@ export class ApiRequestNode implements Node {
   id: string;
   type: string = 'apiRequest';
   name: string = 'API Request';
+  position: { x: number; y: number } = { x: 0, y: 0 };
   category: string = 'Integration';
   description: string = 'Make HTTP requests to external APIs and services';
   
+  data: {
+    inputs: Record<string, any>;
+    outputs: Record<string, any>;
+    [key: string]: any;
+  } = {
+    inputs: {},
+    outputs: {}
+  };
+  
+  // Kept for backward compatibility
   inputs: Record<string, any> = {
     url: '', // URL to make the request to
     method: 'GET', // HTTP method
@@ -157,7 +170,7 @@ export class ApiRequestNode implements Node {
         status: 0,
         headers: {},
         data: null,
-        error: error.message || 'Request failed',
+        error: getErrorMessage(error, 'Request failed'),
         isLoading: false,
         duration
       };
@@ -294,12 +307,12 @@ export class ApiRequestNode implements Node {
   ): Promise<Response> {
     const retryDelay = this.inputs.retryDelay;
     
-    let lastError: Error;
+    let lastError: unknown;
     
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         return await requestFn();
-      } catch (error) {
+      } catch (error: unknown) {
         lastError = error;
         
         // If this is the last attempt, don't wait
@@ -317,34 +330,40 @@ export class ApiRequestNode implements Node {
 }
 
 // Register the node with the NodeRegistry
-NodeRegistry.getInstance().registerNode({
+NodeRegistry.getInstance().registerNodeType({
   type: 'apiRequest',
   name: 'API Request',
   category: 'Integration',
   description: 'Make HTTP requests to external APIs and services',
   nodeClass: ApiRequestNode,
   inputs: [
-    { name: 'url', type: 'string', description: 'URL to make the request to' },
+    { id: 'url', name: 'url', type: 'string', direction: 'input', description: 'URL to make the request to' },
     { 
+      id: 'method',
       name: 'method', 
       type: 'string', 
+      direction: 'input',
       description: 'HTTP method',
       options: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'],
       default: 'GET'
     },
-    { name: 'headers', type: 'object', description: 'HTTP headers', default: {} },
-    { name: 'queryParams', type: 'object', description: 'Query string parameters', default: {} },
-    { name: 'body', type: 'any', description: 'Request body' },
+    { id: 'headers', name: 'headers', type: 'object', direction: 'input', description: 'HTTP headers', default: {} },
+    { id: 'queryParams', name: 'queryParams', type: 'object', direction: 'input', description: 'Query string parameters', default: {} },
+    { id: 'body', name: 'body', type: 'any', direction: 'input', description: 'Request body' },
     { 
+      id: 'bodyContentType',
       name: 'bodyContentType', 
       type: 'string', 
+      direction: 'input',
       description: 'Content type for body',
       options: ['json', 'form', 'text', 'binary'],
       default: 'json'
     },
     { 
+      id: 'authentication',
       name: 'authentication', 
       type: 'object', 
+      direction: 'input',
       description: 'Authentication configuration',
       default: {
         type: 'none',
@@ -356,20 +375,20 @@ NodeRegistry.getInstance().registerNode({
         apiKeyLocation: 'header'
       }
     },
-    { name: 'timeout', type: 'number', description: 'Timeout in milliseconds', default: 30000 },
-    { name: 'retries', type: 'number', description: 'Number of retry attempts', default: 0 },
-    { name: 'retryDelay', type: 'number', description: 'Delay between retries in milliseconds', default: 1000 },
-    { name: 'validateStatus', type: 'boolean', description: 'Whether to throw error on non-2xx status codes', default: true },
-    { name: 'followRedirects', type: 'boolean', description: 'Whether to follow redirects', default: true }
+    { id: 'timeout', name: 'timeout', type: 'number', direction: 'input', description: 'Timeout in milliseconds', default: 30000 },
+    { id: 'retries', name: 'retries', type: 'number', direction: 'input', description: 'Number of retry attempts', default: 0 },
+    { id: 'retryDelay', name: 'retryDelay', type: 'number', direction: 'input', description: 'Delay between retries in milliseconds', default: 1000 },
+    { id: 'validateStatus', name: 'validateStatus', type: 'boolean', direction: 'input', description: 'Whether to throw error on non-2xx status codes', default: true },
+    { id: 'followRedirects', name: 'followRedirects', type: 'boolean', direction: 'input', description: 'Whether to follow redirects', default: true }
   ],
   outputs: [
-    { name: 'response', type: 'object', description: 'Full response object' },
-    { name: 'status', type: 'number', description: 'HTTP status code' },
-    { name: 'headers', type: 'object', description: 'Response headers' },
-    { name: 'data', type: 'any', description: 'Parsed response data' },
-    { name: 'error', type: 'string', description: 'Error information if request failed' },
-    { name: 'isLoading', type: 'boolean', description: 'Whether request is in progress' },
-    { name: 'duration', type: 'number', description: 'Request duration in milliseconds' }
+    { id: 'response', name: 'response', type: 'object', direction: 'output', description: 'Full response object' },
+    { id: 'status', name: 'status', type: 'number', direction: 'output', description: 'HTTP status code' },
+    { id: 'headers', name: 'headers', type: 'object', direction: 'output', description: 'Response headers' },
+    { id: 'data', name: 'data', type: 'any', direction: 'output', description: 'Parsed response data' },
+    { id: 'error', name: 'error', type: 'string', direction: 'output', description: 'Error information if request failed' },
+    { id: 'isLoading', name: 'isLoading', type: 'boolean', direction: 'output', description: 'Whether request is in progress' },
+    { id: 'duration', name: 'duration', type: 'number', direction: 'output', description: 'Request duration in milliseconds' }
   ],
   icon: 'CloudOutlined' // Material UI icon name
 });

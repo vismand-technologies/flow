@@ -21,10 +21,10 @@ import {
   IconButton,
   Snackbar,
   Alert,
-  SelectChangeEvent
 } from '@mui/material';
+import type { SelectChangeEvent } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
-import RefreshIcon from '@mui/icons-material/Refresh';
+// import RefreshIcon from '@mui/icons-material/Refresh'; // Unused import
 import SettingsBackupRestoreIcon from '@mui/icons-material/SettingsBackupRestore';
 
 // Mock settings interface - in a real app, this would be more extensive
@@ -183,7 +183,7 @@ const WorkflowDashboardSettings: React.FC<WorkflowDashboardSettingsProps> = ({
         
         <Grid container spacing={4}>
           {/* General Settings */}
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="h6" gutterBottom>
@@ -284,7 +284,7 @@ const WorkflowDashboardSettings: React.FC<WorkflowDashboardSettingsProps> = ({
           </Grid>
           
           {/* Display Settings */}
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="h6" gutterBottom>
@@ -364,7 +364,7 @@ const WorkflowDashboardSettings: React.FC<WorkflowDashboardSettingsProps> = ({
           </Grid>
           
           {/* Custom Settings (for future extension) */}
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="h6" gutterBottom>

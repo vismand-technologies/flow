@@ -1,34 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Grid } from '@mui/material';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../core/store/index';
 import { workflowExecutionEngine } from '../../core/execution/WorkflowExecutionEngine';
-import { Box, Card, CardContent, Typography, Badge, CircularProgress, LinearProgress } from '@mui/material';
+import type { NodeStatus, WorkflowExecutionStatus } from '../../core/execution/WorkflowExecutionEngine';
+import { ExecutionEvents } from '../../core/execution/WorkflowExecutionEngine';
+import { Box, Card, CardContent, Typography, CircularProgress, LinearProgress, Button, Stack } from '@mui/material';
 import DoneIcon from '@mui/icons-material/Done';
 import ErrorIcon from '@mui/icons-material/Error';
 import PendingIcon from '@mui/icons-material/Pending';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 
-// Types for node execution status
-type NodeStatus = 'idle' | 'running' | 'completed' | 'failed';
-
-interface NodeExecutionStatus {
-  id: string;
-  name: string;
-  type: string;
-  status: NodeStatus;
-  startTime?: Date;
-  endTime?: Date;
-  error?: string;
-}
-
-interface WorkflowExecutionStatus {
-  status: 'idle' | 'running' | 'completed' | 'failed';
-  startTime?: Date;
-  endTime?: Date;
-  nodeStatuses: Record<string, NodeExecutionStatus>;
-  progress: number; // Percentage complete (0-100)
-  error?: string;
-}
+// Using types imported from WorkflowExecutionEngine
 
 /**
  * WorkflowMonitor component
@@ -43,102 +25,82 @@ const WorkflowMonitor: React.FC = () => {
   });
 
   // Get current workflow from Redux store
-  const workflow = useSelector((state: RootState) => state.workflow.currentWorkflow);
+  const workflow = useSelector((state: RootState) => state.workflow);
   const nodes = useSelector((state: RootState) => state.workflow.nodes);
+  const [isExecuting, setIsExecuting] = useState(false);
   
-  // Mock function to simulate workflow execution updates for demo purposes
-  // In a real implementation, this would subscribe to events from the WorkflowExecutionEngine
+  // Subscribe to workflow execution events
   useEffect(() => {
     if (!workflow || !nodes || nodes.length === 0) return;
     
-    // Initialize execution status
-    const initialStatus: WorkflowExecutionStatus = {
+    // Get initial status from engine or create a default one if not available
+    const initialStatus = workflowExecutionEngine.getExecutionStatus() || {
       status: 'idle',
       nodeStatuses: {},
       progress: 0
     };
-    
-    // Create initial node statuses
-    nodes.forEach(node => {
-      initialStatus.nodeStatuses[node.id] = {
-        id: node.id,
-        name: node.data.label || 'Unnamed Node',
-        type: node.type || 'unknown',
-        status: 'idle'
-      };
-    });
-    
     setExecutionStatus(initialStatus);
     
-    // This is just for demonstration, would be replaced with real execution tracking
-    const simulateExecution = () => {
-      // Set workflow to running
-      setExecutionStatus(prev => ({
-        ...prev,
-        status: 'running',
-        startTime: new Date()
-      }));
-      
-      // Process nodes in sequence with delays to simulate execution
-      const nodeIds = Object.keys(initialStatus.nodeStatuses);
-      let completedNodes = 0;
-      
-      // Process each node with a delay
-      nodeIds.forEach((nodeId, index) => {
-        setTimeout(() => {
-          setExecutionStatus(prev => {
-            const updatedStatuses = {...prev.nodeStatuses};
-            updatedStatuses[nodeId] = {
-              ...updatedStatuses[nodeId],
-              status: 'running',
-              startTime: new Date()
-            };
-            
-            return {
-              ...prev,
-              nodeStatuses: updatedStatuses,
-              progress: Math.round((completedNodes / nodeIds.length) * 100)
-            };
-          });
-          
-          // After a delay, mark as completed or failed (randomly for demo)
-          setTimeout(() => {
-            completedNodes++;
-            const success = Math.random() > 0.2; // 80% success rate for demo
-            
-            setExecutionStatus(prev => {
-              const updatedStatuses = {...prev.nodeStatuses};
-              updatedStatuses[nodeId] = {
-                ...updatedStatuses[nodeId],
-                status: success ? 'completed' : 'failed',
-                endTime: new Date(),
-                error: success ? undefined : 'Mock error for demonstration'
-              };
-              
-              const allCompleted = completedNodes >= nodeIds.length;
-              const anyFailed = Object.values(updatedStatuses).some(n => n.status === 'failed');
-              
-              return {
-                ...prev,
-                nodeStatuses: updatedStatuses,
-                progress: Math.round((completedNodes / nodeIds.length) * 100),
-                status: allCompleted ? (anyFailed ? 'failed' : 'completed') : 'running',
-                endTime: allCompleted ? new Date() : undefined,
-                error: anyFailed ? 'One or more nodes failed execution' : undefined
-              };
-            });
-          }, 1500);
-        }, index * 800); // Stagger node execution
-      });
+    // Set up event listeners for real-time updates
+    const handleStatusUpdate = (status: WorkflowExecutionStatus) => {
+      setExecutionStatus({...status});
     };
     
-    // Simulate button click to start execution
-    const timer = setTimeout(simulateExecution, 1000);
+    const handleWorkflowStart = (status: WorkflowExecutionStatus) => {
+      setIsExecuting(true);
+      setExecutionStatus({...status});
+    };
     
+    const handleWorkflowComplete = (status: WorkflowExecutionStatus) => {
+      setIsExecuting(false);
+      setExecutionStatus({...status});
+    };
+    
+    const handleWorkflowError = (status: WorkflowExecutionStatus) => {
+      setIsExecuting(false);
+      setExecutionStatus({...status});
+    };
+    
+    // Register event listeners
+    workflowExecutionEngine.on(ExecutionEvents.EXECUTION_STATUS, handleStatusUpdate);
+    workflowExecutionEngine.on(ExecutionEvents.WORKFLOW_START, handleWorkflowStart);
+    workflowExecutionEngine.on(ExecutionEvents.WORKFLOW_COMPLETE, handleWorkflowComplete);
+    workflowExecutionEngine.on(ExecutionEvents.WORKFLOW_ERROR, handleWorkflowError);
+    
+    // Clean up event listeners on unmount
     return () => {
-      clearTimeout(timer);
+      workflowExecutionEngine.off(ExecutionEvents.EXECUTION_STATUS, handleStatusUpdate);
+      workflowExecutionEngine.off(ExecutionEvents.WORKFLOW_START, handleWorkflowStart);
+      workflowExecutionEngine.off(ExecutionEvents.WORKFLOW_COMPLETE, handleWorkflowComplete);
+      workflowExecutionEngine.off(ExecutionEvents.WORKFLOW_ERROR, handleWorkflowError);
     };
   }, [workflow, nodes]);
+  
+  // Handle execution button click
+  const handleExecuteWorkflow = async () => {
+    if (!workflow || isExecuting) return;
+    
+    try {
+      // Load the current workflow into the execution engine
+      // Add required metadata for Workflow type compatibility
+      const workflowWithMetadata = {
+        ...workflow,
+        metadata: {
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          author: 'Current User',
+          version: '1.0'
+        }
+      };
+      
+      workflowExecutionEngine.loadWorkflow(workflowWithMetadata);
+      
+      // Execute the workflow
+      await workflowExecutionEngine.executeWorkflow();
+    } catch (error) {
+      console.error('Error executing workflow:', error);
+    }
+  };
   
   // Helper to get status color
   const getStatusColor = (status: NodeStatus): string => {
@@ -180,23 +142,34 @@ const WorkflowMonitor: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h5" gutterBottom>
-        Workflow Monitor: {workflow.name}
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h5">
+          Workflow Monitor: {workflow.name}
+        </Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<PlayArrowIcon />}
+          onClick={handleExecuteWorkflow}
+          disabled={isExecuting}
+        >
+          Execute Workflow
+        </Button>
+      </Box>
       
       {/* Overall workflow status */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={6}>
+          <Stack direction="row" spacing={2} sx={{ flexWrap: { xs: 'wrap', md: 'nowrap' } }} alignItems="center">
+            <Box sx={{ width: { xs: '100%', md: '50%' } }}>
               <Typography variant="h6">
                 Status: {executionStatus.status.charAt(0).toUpperCase() + executionStatus.status.slice(1)}
               </Typography>
               {executionStatus.error && (
                 <Typography color="error">{executionStatus.error}</Typography>
               )}
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ width: { xs: '100%', md: '50%' } }}>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Box sx={{ width: '100%', mr: 1 }}>
                   <LinearProgress 
@@ -214,16 +187,16 @@ const WorkflowMonitor: React.FC = () => {
               <Typography variant="body2">
                 Execution time: {formatExecutionTime(executionStatus.startTime, executionStatus.endTime)}
               </Typography>
-            </Grid>
-          </Grid>
+            </Box>
+          </Stack>
         </CardContent>
       </Card>
       
       {/* Node execution statuses */}
       <Typography variant="h6" gutterBottom>Node Execution Status</Typography>
-      <Grid container spacing={2}>
+      <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap' }}>
         {Object.values(executionStatus.nodeStatuses).map((nodeStatus) => (
-          <Grid item xs={12} sm={6} md={4} lg={3} key={nodeStatus.id}>
+          <Box sx={{ width: { xs: '100%', sm: '50%', md: '33.33%', lg: '25%' } }} key={nodeStatus.id}>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
@@ -250,9 +223,9 @@ const WorkflowMonitor: React.FC = () => {
                 )}
               </CardContent>
             </Card>
-          </Grid>
+          </Box>
         ))}
-      </Grid>
+      </Stack>
     </Box>
   );
 };

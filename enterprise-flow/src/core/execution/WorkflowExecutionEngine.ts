@@ -1,19 +1,101 @@
 import type { Node, Connection, Workflow } from '../models/types';
 import { NodeRegistry } from '../models/NodeRegistry';
+import { getErrorMessage } from '../utils/errorHandling';
+
+// Simple TypeScript event emitter implementation
+type EventHandler = (...args: any[]) => void;
+
+class TypedEventEmitter {
+  private events: Record<string, EventHandler[]> = {};
+
+  on(event: string, handler: EventHandler): void {
+    if (!this.events[event]) {
+      this.events[event] = [];
+    }
+    this.events[event].push(handler);
+  }
+
+  off(event: string, handler: EventHandler): void {
+    if (!this.events[event]) return;
+    this.events[event] = this.events[event].filter(h => h !== handler);
+  }
+
+  emit(event: string, ...args: any[]): void {
+    if (!this.events[event]) return;
+    this.events[event].forEach(handler => handler(...args));
+  }
+}
+
+// Define execution event types
+export type NodeStatus = 'idle' | 'running' | 'completed' | 'failed';
+
+export interface NodeExecutionStatus {
+  id: string;
+  name: string;
+  type: string;
+  status: NodeStatus;
+  startTime?: Date;
+  endTime?: Date;
+  error?: string;
+  data?: Record<string, any>;
+}
+
+export interface WorkflowExecutionStatus {
+  status: 'idle' | 'running' | 'completed' | 'failed';
+  startTime?: Date;
+  endTime?: Date;
+  nodeStatuses: Record<string, NodeExecutionStatus>;
+  progress: number; // Percentage complete (0-100)
+  error?: string;
+}
+
+// Define execution events as string literals for better TypeScript compatibility
+export const ExecutionEvents = {
+  WORKFLOW_START: 'workflow:start',
+  WORKFLOW_COMPLETE: 'workflow:complete',
+  WORKFLOW_ERROR: 'workflow:error',
+  NODE_START: 'node:start',
+  NODE_COMPLETE: 'node:complete',
+  NODE_ERROR: 'node:error',
+  EXECUTION_PROGRESS: 'execution:progress',
+  EXECUTION_STATUS: 'execution:status'
+} as const;
+
+export type ExecutionEventType = typeof ExecutionEvents[keyof typeof ExecutionEvents];
 
 /**
  * WorkflowExecutionEngine
  * Handles dependency resolution and execution of nodes in a workflow
  */
-export class WorkflowExecutionEngine {
+export class WorkflowExecutionEngine extends TypedEventEmitter {
+  private static instance: WorkflowExecutionEngine;
+  
+  /**
+   * Get the singleton instance of WorkflowExecutionEngine
+   * @returns The singleton instance
+   */
+  public static getInstance(): WorkflowExecutionEngine {
+    if (!WorkflowExecutionEngine.instance) {
+      WorkflowExecutionEngine.instance = new WorkflowExecutionEngine();
+    }
+    return WorkflowExecutionEngine.instance;
+  }
   private workflow: Workflow | null = null;
   private nodeMap: Map<string, Node> = new Map();
   private connectionMap: Map<string, Connection[]> = new Map(); // Map of nodeId -> connections
+  private inputConnectionMap: Map<string, Connection[]> = new Map(); // Map of nodeId -> incoming connections
   private registry: NodeRegistry;
   private executionQueue: string[] = []; // Node IDs to be executed
   private executing: boolean = false;
+  private nodeResults: Map<string, any> = new Map(); // Cache of node execution results
+  private executionStatus: WorkflowExecutionStatus = {
+    status: 'idle',
+    nodeStatuses: {},
+    progress: 0
+  };
 
   constructor() {
+    super();
     this.registry = NodeRegistry.getInstance();
   }
 
@@ -25,7 +107,22 @@ export class WorkflowExecutionEngine {
     this.workflow = workflow;
     this.resetState();
     this.buildNodeMap();
-    this.buildConnectionMap();
+    this.buildConnectionMaps();
+    
+    // Initialize node statuses
+    if (workflow.nodes) {
+      workflow.nodes.forEach(node => {
+        this.executionStatus.nodeStatuses[node.id] = {
+          id: node.id,
+          name: node.data?.label || 'Unnamed Node',
+          type: node.type || 'unknown',
+          status: 'idle'
+        };
+      });
+    }
+    
+    // Emit initial status
+    this.emit(ExecutionEvents.EXECUTION_STATUS, { ...this.executionStatus });
   }
 
   /**
@@ -34,8 +131,42 @@ export class WorkflowExecutionEngine {
   private resetState(): void {
     this.nodeMap.clear();
     this.connectionMap.clear();
+    this.inputConnectionMap.clear();
     this.executionQueue = [];
+    this.nodeResults.clear();
     this.executing = false;
+    this.executionStatus = {
+      status: 'idle',
+      nodeStatuses: {},
+      progress: 0
+    };
+  }
+  
+  /**
+   * Update a node's execution status
+   * @param nodeId ID of the node to update
+   * @param updates Status updates to apply
+   */
+  private updateNodeStatus(nodeId: string, updates: Partial<NodeExecutionStatus>): void {
+    if (!this.executionStatus.nodeStatuses[nodeId]) {
+      return;
+    }
+    
+    this.executionStatus.nodeStatuses[nodeId] = {
+      ...this.executionStatus.nodeStatuses[nodeId],
+      ...updates
+    };
+    
+    // Emit updated execution status
+    this.emit(ExecutionEvents.EXECUTION_STATUS, { ...this.executionStatus });
+  }
+  
+  /**
+   * Get the current execution status
+   * @returns Current workflow execution status
+   */
+  public getExecutionStatus(): WorkflowExecutionStatus {
+    return { ...this.executionStatus };
   }
 
   /**
@@ -50,27 +181,91 @@ export class WorkflowExecutionEngine {
   }
 
   /**
-   * Build a map of connections grouped by source nodeId
+   * Build maps of connections grouped by source and target nodeId
    */
-  private buildConnectionMap(): void {
+  private buildConnectionMaps(): void {
     if (!this.workflow) return;
 
-    // Initialize connection map for each node
+    // Initialize connection maps for each node
     this.workflow.nodes.forEach(node => {
       this.connectionMap.set(node.id, []);
+      this.inputConnectionMap.set(node.id, []);
     });
 
-    // Populate connection map
+    // Populate connection maps
     this.workflow.connections.forEach(connection => {
+      // Add to outgoing connections map
       const sourceNodeId = connection.sourceNodeId;
-      const connections = this.connectionMap.get(sourceNodeId) || [];
-      connections.push(connection);
-      this.connectionMap.set(sourceNodeId, connections);
+      const outgoingConnections = this.connectionMap.get(sourceNodeId) || [];
+      outgoingConnections.push(connection);
+      this.connectionMap.set(sourceNodeId, outgoingConnections);
+      
+      // Add to incoming connections map
+      const targetNodeId = connection.targetNodeId;
+      const incomingConnections = this.inputConnectionMap.get(targetNodeId) || [];
+      incomingConnections.push(connection);
+      this.inputConnectionMap.set(targetNodeId, incomingConnections);
     });
   }
 
   /**
-   * Execute a specific node and its dependencies
+   * Find nodes with no incoming connections (start nodes)
+   * @returns Array of node IDs that have no incoming connections
+   */
+  private findStartNodes(): string[] {
+    const startNodes: string[] = [];
+    
+    if (!this.workflow) return startNodes;
+    
+    this.workflow.nodes.forEach(node => {
+      const incomingConnections = this.inputConnectionMap.get(node.id) || [];
+      if (incomingConnections.length === 0) {
+        startNodes.push(node.id);
+      }
+    });
+    
+    return startNodes;
+  }
+
+  /**
+   * Get inputs for a node from its incoming connections
+   * @param node The node to get inputs for
+   * @returns Object containing input values by input name
+   */
+  private getNodeInputs(node: Node): Record<string, any> {
+    const inputs: Record<string, any> = {};
+    const incomingConnections = this.inputConnectionMap.get(node.id) || [];
+    
+    incomingConnections.forEach(connection => {
+      const sourceNodeId = connection.sourceNodeId;
+      const sourceFieldId = connection.sourceFieldId;
+      const targetFieldId = connection.targetFieldId;
+      
+      // Map field IDs to input/output names
+      // In a real implementation, we would have a proper mapping between field IDs and names
+      // For now, we'll use the field IDs as the input/output names
+      const sourceOutputName = sourceFieldId;
+      const targetInputName = targetFieldId;
+      
+      // Get the result from the source node
+      const sourceResult = this.nodeResults.get(sourceNodeId);
+      
+      if (sourceResult !== undefined && sourceOutputName && targetInputName) {
+        // If the source has a specific output field, use that
+        if (typeof sourceResult === 'object' && sourceResult !== null && sourceOutputName in sourceResult) {
+          inputs[targetInputName] = sourceResult[sourceOutputName];
+        } else {
+          // Otherwise use the entire result
+          inputs[targetInputName] = sourceResult;
+        }
+      }
+    });
+    
+    return inputs;
+  }
+
+  /**
+   * Execute a specific node
    * @param nodeId ID of the node to execute
    * @returns Promise that resolves when execution is complete
    */
@@ -80,15 +275,59 @@ export class WorkflowExecutionEngine {
       throw new Error(`Node not found: ${nodeId}`);
     }
 
-    // Build dependencies
-    const dependencyOrder = this.resolveDependencies(nodeId);
+    // Get the node implementation from registry
+    const nodeImpl = this.registry.getNodeImplementation(node.type);
+    if (!nodeImpl) {
+      throw new Error(`No implementation found for node type: ${node.type}`);
+    }
+
+    // Update node status to running
+    this.updateNodeStatus(nodeId, {
+      status: 'running',
+      startTime: new Date()
+    });
     
-    // Queue dependencies for execution
-    this.executionQueue = dependencyOrder;
-    
-    // Start execution if not already running
-    if (!this.executing) {
-      await this.executeQueue();
+    // Emit node start event
+    this.emit(ExecutionEvents.NODE_START, { ...this.executionStatus.nodeStatuses[nodeId] });
+
+    // Execute the node
+    try {
+      const inputs = this.getNodeInputs(node);
+      const result = await nodeImpl.execute(node, inputs);
+      
+      // Cache the result
+      this.nodeResults.set(nodeId, result);
+      
+      // Update node status to completed
+      this.updateNodeStatus(nodeId, {
+        status: 'completed',
+        endTime: new Date(),
+        data: result
+      });
+      
+      // Emit node complete event
+      this.emit(ExecutionEvents.NODE_COMPLETE, { 
+        ...this.executionStatus.nodeStatuses[nodeId],
+        result
+      });
+
+      return result;
+    } catch (error) {
+      // Update node status to failed
+      this.updateNodeStatus(nodeId, {
+        status: 'failed',
+        endTime: new Date(),
+        error: getErrorMessage(error, `Error executing node ${node.type}`)
+      });
+      
+      // Emit node error event
+      this.emit(ExecutionEvents.NODE_ERROR, { 
+        ...this.executionStatus.nodeStatuses[nodeId],
+        error: this.executionStatus.nodeStatuses[nodeId].error
+      });
+      
+      console.error(`Error executing node ${nodeId}:`, error);
+      throw error;
     }
   }
 
@@ -101,85 +340,91 @@ export class WorkflowExecutionEngine {
       throw new Error('No workflow loaded');
     }
 
-    // Find terminal nodes (nodes with no outgoing connections)
-    const terminalNodes: string[] = [];
-    this.workflow.nodes.forEach(node => {
-      const connections = this.connectionMap.get(node.id) || [];
-      if (connections.length === 0) {
-        terminalNodes.push(node.id);
-      }
-    });
-
-    // If no terminal nodes, execute all nodes
-    if (terminalNodes.length === 0) {
-      this.executionQueue = this.workflow.nodes.map(node => node.id);
-    } else {
-      // Build dependency order from terminal nodes
-      const allDependencies: string[] = [];
-      terminalNodes.forEach(nodeId => {
-        const dependencies = this.resolveDependencies(nodeId);
-        dependencies.forEach(depId => {
-          if (!allDependencies.includes(depId)) {
-            allDependencies.push(depId);
-          }
-        });
-      });
-      this.executionQueue = allDependencies;
-    }
-
-    // Start execution
-    return this.executeQueue();
-  }
-
-  /**
-   * Execute nodes in the queue
-   */
-  private async executeQueue(): Promise<void> {
-    if (this.executing || this.executionQueue.length === 0) {
-      return;
+    if (this.executing) {
+      throw new Error('Workflow execution already in progress');
     }
 
     this.executing = true;
+    
+    // Reset node results
+    this.nodeResults.clear();
+    
+    // Find start nodes (nodes with no incoming connections)
+    const startNodes = this.findStartNodes();
+    if (startNodes.length === 0) {
+      throw new Error('No start nodes found in workflow');
+    }
+    
+    // Initialize execution queue with start nodes
+    this.executionQueue = [...startNodes];
+    
+    // Update workflow status to running
+    this.executionStatus.status = 'running';
+    this.executionStatus.startTime = new Date();
+    this.executionStatus.progress = 0;
+    
+    // Emit workflow start event
+    this.emit(ExecutionEvents.WORKFLOW_START, { ...this.executionStatus });
 
     try {
+      const totalNodes = this.workflow.nodes.length;
+      let completedNodes = 0;
+      
+      // Process execution queue
       while (this.executionQueue.length > 0) {
-        const nodeId = this.executionQueue.shift()!;
-        await this.executeNodeComputation(nodeId);
+        const nodeId = this.executionQueue.shift();
+        if (!nodeId) continue;
+
+        // Skip nodes that have already been executed
+        if (this.executionStatus.nodeStatuses[nodeId]?.status === 'completed') {
+          continue;
+        }
+
+        // Execute the node
+        await this.executeNode(nodeId);
+        
+        // Update progress
+        completedNodes++;
+        this.executionStatus.progress = Math.round((completedNodes / totalNodes) * 100);
+        this.emit(ExecutionEvents.EXECUTION_PROGRESS, { 
+          progress: this.executionStatus.progress,
+          completedNodes,
+          totalNodes
+        });
+        
+        // Queue dependent nodes for execution
+        this.queueDependentNodes(nodeId);
       }
+      
+      // Workflow completed successfully
+      this.executionStatus.status = 'completed';
+      this.executionStatus.endTime = new Date();
+      this.executionStatus.progress = 100;
+      this.emit(ExecutionEvents.WORKFLOW_COMPLETE, { ...this.executionStatus });
+      
+    } catch (error) {
+      // Workflow failed
+      this.executionStatus.status = 'failed';
+      this.executionStatus.endTime = new Date();
+      this.executionStatus.error = getErrorMessage(error, 'Workflow execution failed');
+      
+      this.emit(ExecutionEvents.WORKFLOW_ERROR, { 
+        ...this.executionStatus,
+        error: this.executionStatus.error
+      });
+      
+      console.error('Workflow execution error:', error);
+      throw error;
     } finally {
       this.executing = false;
     }
   }
 
   /**
-   * Execute computation for a single node
+   * Queue dependent nodes for execution
+   * @param nodeId ID of the completed node
    */
-  private async executeNodeComputation(nodeId: string): Promise<void> {
-    const node = this.nodeMap.get(nodeId);
-    if (!node) return;
-
-    // Get compute function for this node type
-    const nodeDef = this.registry.getNodeDefinition(node.type);
-    if (!nodeDef || !nodeDef.compute) {
-      console.warn(`No compute function for node type: ${node.type}`);
-      return;
-    }
-
-    // Execute the node's compute function
-    try {
-      nodeDef.compute(node);
-      
-      // Propagate changes to connected nodes
-      this.propagateChanges(nodeId);
-    } catch (error) {
-      console.error(`Error executing node ${nodeId}:`, error);
-    }
-  }
-
-  /**
-   * Propagate changes from a node to its connected nodes
-   */
-  private propagateChanges(nodeId: string): void {
+  private queueDependentNodes(nodeId: string): void {
     const connections = this.connectionMap.get(nodeId) || [];
     
     // Get unique target node IDs
@@ -188,12 +433,10 @@ export class WorkflowExecutionEngine {
       targetNodeIds.add(conn.targetNodeId);
     });
     
-    // Mark target nodes as dirty
+    // Check if all dependencies are satisfied for each target node
     targetNodeIds.forEach(targetId => {
-      const targetNode = this.nodeMap.get(targetId);
-      if (targetNode) {
-        // In a real implementation, we would mark the node as dirty
-        // For now, just add to execution queue
+      if (this.areDependenciesSatisfied(targetId)) {
+        // Add to execution queue if not already there
         if (!this.executionQueue.includes(targetId)) {
           this.executionQueue.push(targetId);
         }
@@ -202,49 +445,26 @@ export class WorkflowExecutionEngine {
   }
 
   /**
-   * Resolve dependencies for a node in execution order
-   * @param nodeId ID of the node to resolve dependencies for
-   * @returns Array of node IDs in execution order
+   * Check if all dependencies for a node are satisfied
+   * @param nodeId ID of the node to check
+   * @returns True if all dependencies are satisfied
    */
-  private resolveDependencies(nodeId: string): string[] {
-    // Use a set to track visited nodes (prevents infinite recursion for cycles)
-    const visited = new Set<string>();
-    // Use array to maintain order
-    const ordered: string[] = [];
+  private areDependenciesSatisfied(nodeId: string): boolean {
+    const incomingConnections = this.inputConnectionMap.get(nodeId) || [];
     
-    // Helper function to recursively resolve dependencies
-    const visit = (id: string) => {
-      if (visited.has(id)) return;
-      visited.add(id);
+    // Check if all source nodes are completed
+    for (const connection of incomingConnections) {
+      const sourceNodeId = connection.sourceNodeId;
+      const sourceStatus = this.executionStatus.nodeStatuses[sourceNodeId]?.status;
       
-      // Find input connections to this node
-      const inputConnections = this.findInputConnections(id);
-      
-      // Visit all dependencies first
-      inputConnections.forEach(conn => {
-        visit(conn.sourceNodeId);
-      });
-      
-      // Add this node to ordered list
-      ordered.push(id);
-    };
+      if (sourceStatus !== 'completed') {
+        return false;
+      }
+    }
     
-    // Start resolving from the target node
-    visit(nodeId);
-    return ordered;
-  }
-
-  /**
-   * Find all input connections to a node
-   * @param nodeId The node ID to find inputs for
-   * @returns Array of connections that target this node
-   */
-  private findInputConnections(nodeId: string): Connection[] {
-    if (!this.workflow) return [];
-    
-    return this.workflow.connections.filter(conn => conn.targetNodeId === nodeId);
+    return true;
   }
 }
 
-// Export singleton instance
-export const workflowExecutionEngine = new WorkflowExecutionEngine();
+// Create and export a singleton instance
+export const workflowExecutionEngine = WorkflowExecutionEngine.getInstance();

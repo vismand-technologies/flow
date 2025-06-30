@@ -1,4 +1,4 @@
-import { 
+import type { 
   WorkflowExecution, 
   MonitoringSummary, 
   PerformanceMetrics, 
@@ -128,7 +128,7 @@ export class MonitoringService {
   /**
    * Get performance metrics data
    */
-  public async getPerformanceMetrics(workflowId?: string, timeRange?: string): Promise<PerformanceMetrics> {
+  public async getPerformanceMetrics(_workflowId?: string, timeRange?: string): Promise<PerformanceMetrics> {
     // Simulate API call delay
     await this.delay(400);
     
