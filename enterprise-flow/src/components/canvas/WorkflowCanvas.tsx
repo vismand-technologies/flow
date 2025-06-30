@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useMemo } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -24,15 +24,17 @@ import { nanoid } from 'nanoid';
 // Import our custom node component
 import BaseNode from '../nodes/BaseNode';
 
-// Define node types for ReactFlow
-const nodeTypes = {
-  default: BaseNode,
-  // Additional custom node types can be added here as we develop them
-};
+// Custom node components (defined outside component to avoid recreation)
 
 const WorkflowCanvas: React.FC = () => {
   const dispatch = useDispatch();
   const workflow = useSelector((state: RootState) => state.workflow);
+  
+  // Memoize nodeTypes to prevent recreation on each render
+  const nodeTypes = useMemo(() => ({
+    default: BaseNode,
+    // Additional custom node types can be added here as we develop them
+  }), []);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   // Convert our nodes and connections to ReactFlow format

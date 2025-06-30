@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import type { RootState } from '../../core/store';
+import type { RootState } from '../../core/store/index';
 import { updateNode } from '../../core/store/workflowSlice';
 import { NodeRegistry } from '../../core/models/NodeRegistry';
 import { FieldType } from '../../core/models/types';

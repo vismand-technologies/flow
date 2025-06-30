@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { Grid } from '@mui/material';
 import { useSelector } from 'react-redux';
-import { RootState } from '../../core/store';
+import type { RootState } from '../../core/store/index';
 import { workflowExecutionEngine } from '../../core/execution/WorkflowExecutionEngine';
-import { Box, Card, CardContent, Typography, Grid, Badge, CircularProgress, LinearProgress } from '@mui/material';
+import { Box, Card, CardContent, Typography, Badge, CircularProgress, LinearProgress } from '@mui/material';
 import DoneIcon from '@mui/icons-material/Done';
 import ErrorIcon from '@mui/icons-material/Error';
 import PendingIcon from '@mui/icons-material/Pending';

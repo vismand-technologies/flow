@@ -134,8 +134,12 @@ const NodePalette: React.FC = () => {
     }
   ];
 
-  // Combine registered nodes with hardcoded ones
-  const allTemplates = [...templates, ...hardcodedTemplates];
+  // Filter out any hardcoded templates that are already registered by type
+  const registeredTypes = new Set(templates.map(t => t.type));
+  const filteredHardcoded = hardcodedTemplates.filter(t => !registeredTypes.has(t.type));
+  
+  // Combine registered nodes with non-duplicate hardcoded ones
+  const allTemplates = [...templates, ...filteredHardcoded];
   setNodeTemplates(allTemplates);
   }, []);
   
@@ -252,7 +256,7 @@ const NodePalette: React.FC = () => {
           <div className="node-list">
             {templates.map(template => (
               <div 
-                key={template.type} 
+                key={`${category}-${template.type}`} 
                 className="node-item"
                 onClick={() => handleAddNode(template)}
                 style={{

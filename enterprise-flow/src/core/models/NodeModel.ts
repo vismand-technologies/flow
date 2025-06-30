@@ -1,5 +1,8 @@
 import { nanoid } from 'nanoid';
-import { Node, Field, FieldType, FieldDirection, FieldDefinition } from './types';
+// Import values
+import { FieldType, FieldDirection } from './types';
+// Import types only
+import type { Node, Field } from './types';
 
 /**
  * NodeModel class - Core implementation of the Node pattern

@@ -6,7 +6,7 @@ import NodeConfigPanel from './components/nodes/NodeConfigPanel';
 import WorkflowMonitor from './components/monitoring/WorkflowMonitor';
 import WorkflowVersioning from './components/versioning/WorkflowVersioning';
 import { useSelector } from 'react-redux';
-import type { RootState } from './core/store';
+import type { RootState } from './core/store/index';
 import { Box, Tabs, Tab, Typography, Button, IconButton } from '@mui/material';
 
 // Material UI icon imports - Install @mui/icons-material if needed
